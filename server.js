@@ -3,6 +3,27 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 const port = 3000;
+import { createClient } from '@supabase/supabase-js';
+
+// Obtén las variables de entorno
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+// Crea el cliente de Supabase
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Ejemplo: Insertar un usuario en la base de datos
+async function insertarUsuario(nombre, email) {
+    const { data, error } = await supabase
+        .from('usuarios')
+        .insert([{ nombre, email }]);
+
+    if (error) {
+        console.error('Error al insertar usuario:', error);
+    } else {
+        console.log('Usuario insertado:', data);
+    }
+}
 
 // Servir archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
@@ -16,6 +37,10 @@ app.use(express.json());
 
 // Rutas HTML
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/index', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -58,22 +83,19 @@ app.get('/mario-img', (req, res) => {
 });
 
 // Ruta POST para guardar usuarios en usuarios.txt
-app.post('/registro', (req, res) => {
+app.post('/registro', async (req, res) => {
     const { nombre, email } = req.body;
 
-    const linea = `Nombre: ${nombre}, Email: ${email}\n`;
-
-    fs.appendFile('usuarios.txt', linea, (err) => {
-        if (err) {
-            console.error('Error al guardar el usuario:', err);
-            return res.status(500).send('Error al guardar el usuario');
-        }
-        console.log('Usuario guardado');
+    try {
+        await insertarUsuario(nombre, email);
         res.send('Registro exitoso');
-    });
+    } catch (error) {
+        console.error('Error al guardar el usuario:', error);
+        res.status(500).send('Error al guardar el usuario');
+    }
 });
 
-app.post('/login', (req, res) => {
+app.post('/', (req, res) => {
     const { email } = req.body;
 
     // Leer archivo usuarios.txt para ver si el email existe
@@ -87,7 +109,7 @@ app.post('/login', (req, res) => {
         const existe = data.includes(email);
 
         if (existe) {
-            res.send('<h2>Login correcto</h2><a href="/">Volver al inicio</a>');
+            res.send('<h2>Login correcto</h2><a href="/index">Ir al inicio</a>');       //--> esto hay que cambiarlo por Ir al inicio <--\\
         } else {
             res.send('<h2>Email no registrado</h2><a href="/signup">Volver al login</a>');
         }
